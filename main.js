@@ -93,6 +93,7 @@ function updateCharts() {
 }
 
 // --- Buy/Sell ---
+// FIXED: Now buying all circulation in one go triggers buyout event.
 window.buyCoin = function(coin) {
   const amtInput = document.getElementById(coin.toLowerCase() + '-amount');
   let amt = parseFloat(amtInput.value);
@@ -100,8 +101,15 @@ window.buyCoin = function(coin) {
   if (!amt || amt <= 0) return log(`Invalid amount to buy: ${amt}`);
   let price = state.coins[coin].price;
   let cost = amt * price;
+
+  // If trying to buy more than circulation, just buy all that's left
+  if (amt > state.coins[coin].circulation) {
+    amt = state.coins[coin].circulation;
+    cost = amt * price;
+    log(`Requested more than circulation; buying remaining ${format(amt,6)} ${coin}.`);
+  }
+  if (amt <= 0) return log(`No ${coin} left to buy.`);
   if (cost > state.usd) return log(`Insufficient USD to buy ${amt} ${coin}.`);
-  if (amt > state.coins[coin].circulation) return log(`Not enough ${coin} in circulation to buy.`);
 
   state.usd -= cost;
   state.portfolio[coin] += amt;
