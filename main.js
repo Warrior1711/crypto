@@ -2,17 +2,17 @@
 const START_BALANCE = 100000;
 const COINS = {
   BTC: {
-    price: 27000,
-    circulation: 18000000,
-    max: 21000000,
+    price: 6000,
+    circulation: 1800,
+    max: 2100,
     volatility: 0.018, // bot effect per tick %
     minPrice: 5000,
     maxPrice: 60000,
   },
   LTC: {
     price: 70,
-    circulation: 66000000,
-    max: 84000000,
+    circulation: 6600,
+    max: 8400,
     volatility: 0.025,
     minPrice: 20,
     maxPrice: 250,
