@@ -44,6 +44,28 @@
     </div>
     <div class="log" id="game-log"></div>
     <button onclick="resetGame()" class="reset-btn">Restart Game</button>
+    <button onclick="showAdminMenu()" class="admin-btn">Admin Menu</button>
+
+    <!-- ADMIN MODAL -->
+    <div id="admin-modal" class="admin-modal" style="display:none;">
+      <div class="admin-modal-content">
+        <span class="close" onclick="hideAdminMenu()">&times;</span>
+        <h2>Admin Menu</h2>
+        <div id="admin-login">
+          <label for="admin-password">Enter Admin Password:</label>
+          <input type="password" id="admin-password" placeholder="Password">
+          <button onclick="adminLogin()">Login</button>
+        </div>
+        <div id="admin-controls" style="display:none;">
+          <label for="admin-money">Give Player Money:</label>
+          <input type="number" id="admin-money" min="1" placeholder="Amount">
+          <button onclick="giveMoney()">Give Money</button>
+          <div id="admin-status"></div>
+        </div>
+      </div>
+    </div>
+    <!-- END ADMIN MODAL -->
+
   </div>
   <script src="main.js"></script>
 </body>
