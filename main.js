@@ -2,17 +2,17 @@
 const START_BALANCE = 100000;
 const COINS = {
   BTC: {
-    price: 6000,
-    circulation: 1800,
-    max: 2100,
+    price: 27000,
+    circulation: 18000000,
+    max: 21000000,
     volatility: 0.018, // bot effect per tick %
     minPrice: 5000,
     maxPrice: 60000,
   },
   LTC: {
     price: 70,
-    circulation: 6600,
-    max: 8400,
+    circulation: 66000000,
+    max: 84000000,
     volatility: 0.025,
     minPrice: 20,
     maxPrice: 250,
@@ -270,3 +270,42 @@ function startGame() {
 }
 
 window.onload = startGame;
+
+// --- Admin Menu Logic ---
+window.showAdminMenu = function() {
+  document.getElementById('admin-modal').style.display = 'block';
+  document.getElementById('admin-login').style.display = '';
+  document.getElementById('admin-controls').style.display = 'none';
+  document.getElementById('admin-password').value = '';
+  document.getElementById('admin-status').textContent = '';
+};
+
+window.hideAdminMenu = function() {
+  document.getElementById('admin-modal').style.display = 'none';
+};
+
+window.adminLogin = function() {
+  const pwd = document.getElementById('admin-password').value;
+  if (pwd === 'RealybyIsEpic') {
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-controls').style.display = '';
+    document.getElementById('admin-status').textContent = '';
+  } else {
+    document.getElementById('admin-status').textContent = 'Incorrect password!';
+    document.getElementById('admin-password').value = '';
+  }
+};
+
+window.giveMoney = function() {
+  const amt = Number(document.getElementById('admin-money').value);
+  if (!amt || amt <= 0) {
+    document.getElementById('admin-status').textContent = 'Enter a valid amount.';
+    return;
+  }
+  state.usd += amt;
+  log(`Admin gave the player $${format(amt,2)}.`);
+  document.getElementById('admin-status').textContent = `Gave $${format(amt,2)} to player.`;
+  document.getElementById('admin-money').value = '';
+  updateUI();
+  saveState();
+};
