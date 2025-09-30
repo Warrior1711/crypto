@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crypto Investing Simulator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Crypto Investing Simulator</h1>
+    <div class="balance">
+      <strong>Balance:</strong> $<span id="usd-balance"></span>
+    </div>
+    <div class="portfolio">
+      <strong>Portfolio:</strong>
+      <ul>
+        <li>BTC: <span id="btc-owned">0</span></li>
+        <li>LTC: <span id="ltc-owned">0</span></li>
+      </ul>
+    </div>
+    <div class="market">
+      <h2>Market</h2>
+      <div class="coin">
+        <h3>BTC</h3>
+        <div>Price: $<span id="btc-price"></span></div>
+        <div>Circulating: <span id="btc-circulation"></span> / <span id="btc-max"></span></div>
+        <input type="number" id="btc-amount" min="1" placeholder="Amount">
+        <button onclick="buyCoin('BTC')">Buy BTC</button>
+        <button onclick="sellCoin('BTC')">Sell BTC</button>
+        <canvas id="btc-chart"></canvas>
+      </div>
+      <div class="coin">
+        <h3>LTC</h3>
+        <div>Price: $<span id="ltc-price"></span></div>
+        <div>Circulating: <span id="ltc-circulation"></span> / <span id="ltc-max"></span></div>
+        <input type="number" id="ltc-amount" min="1" placeholder="Amount">
+        <button onclick="buyCoin('LTC')">Buy LTC</button>
+        <button onclick="sellCoin('LTC')">Sell LTC</button>
+        <canvas id="ltc-chart"></canvas>
+      </div>
+    </div>
+    <div class="log" id="game-log"></div>
+    <button onclick="resetGame()" class="reset-btn">Restart Game</button>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
