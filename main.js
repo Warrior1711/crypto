@@ -3,23 +3,23 @@ const START_BALANCE = 100000;
 const COINS = {
   BTC: {
     price: 27000,
-    circulation: 1800,
-    max: 2100,
-    volatility: 0.018, // bot effect per tick %
+    circulation: 1500,
+    max: 2500,
+    volatility: 0.018,
     minPrice: 5000,
     maxPrice: 75000,
   },
   LTC: {
     price: 70,
     circulation: 6600,
-    max: 8400,
+    max: 73000,
     volatility: 0.025,
     minPrice: 20,
-    maxPrice: 400,
+    maxPrice: 350,
   }
 };
-const TICK_INTERVAL = 3500; // ms - market tick
-const BOT_COUNT = 6; // bots trading per tick
+const TICK_INTERVAL = 3500;
+const BOT_COUNT = 6;
 
 // --- Event State ---
 let eventState = {
@@ -31,18 +31,12 @@ let eventState = {
 // --- Game State ---
 let state = {
   usd: START_BALANCE,
-  portfolio: {
-    BTC: 0,
-    LTC: 0,
-  },
+  portfolio: { BTC: 0, LTC: 0 },
   coins: {
     BTC: { price: COINS.BTC.price, circulation: COINS.BTC.circulation },
     LTC: { price: COINS.LTC.price, circulation: COINS.LTC.circulation },
   },
-  history: {
-    BTC: [],
-    LTC: [],
-  },
+  history: { BTC: [], LTC: [] },
   log: [],
 };
 
@@ -89,7 +83,6 @@ function updateLog() {
   const logDiv = document.getElementById('game-log');
   logDiv.innerHTML = state.log.slice(0,14).map(x => `<div>${x}</div>`).join('');
 }
-
 function updateCharts() {
   btcChart.data.labels = state.history.BTC.map(h => h.time);
   btcChart.data.datasets[0].data = state.history.BTC.map(h => h.price);
@@ -100,7 +93,6 @@ function updateCharts() {
 }
 
 // --- Buy/Sell ---
-// Handles partial buy if requested more than available
 window.buyCoin = function(coin) {
   const amtInput = document.getElementById(coin.toLowerCase() + '-amount');
   let amt = parseFloat(amtInput.value);
@@ -108,8 +100,6 @@ window.buyCoin = function(coin) {
   if (!amt || amt <= 0) return log(`Invalid amount to buy: ${amt}`);
   let price = state.coins[coin].price;
   let cost = amt * price;
-
-  // If trying to buy more than circulation, just buy all that's left
   if (amt > state.coins[coin].circulation) {
     amt = state.coins[coin].circulation;
     cost = amt * price;
@@ -151,7 +141,6 @@ function checkCirculation(coin) {
   if (state.coins[coin].circulation <= 0) {
     state.coins[coin].circulation = 0;
     if (!eventState.pumpPending[coin]) {
-      // First sellout: pump and set pumpPending
       log(`!! All ${coin} have been bought out! Bots will drive prices up sharply until new coins are mined.`);
       state.coins[coin].price *= 1.05 + Math.random()*0.08;
       if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
@@ -164,14 +153,11 @@ function checkCirculation(coin) {
         updateUI();
       }, 4000 + Math.random()*5000);
     } else {
-      // Second sellout: dump!
-      let dumpPercent = 0.3 + Math.random() * 0.2; // 30–50% drop
-      let oldPrice = state.coins[coin].price;
+      let dumpPercent = 0.3 + Math.random() * 0.2;
       state.coins[coin].price *= (1 - dumpPercent);
       if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
       log(`Pump & Dump! ${coin} price crashes by ${(dumpPercent*100).toFixed(1)}% after a second buyout!`);
       eventState.pumpPending[coin] = false;
-      // Optionally mine again (remove this block if you want only one dump per cycle)
       setTimeout(() => {
         let mint = Math.floor(COINS[coin].max * 0.01 * Math.random());
         state.coins[coin].circulation += mint;
@@ -187,30 +173,27 @@ function checkCirculation(coin) {
 
 // --- Random Events: Hype & Market Crash ---
 function maybeTriggerEvents() {
-  // Reduce cooldowns
   if (eventState.hypeCooldown > 0) eventState.hypeCooldown--;
   if (eventState.crashCooldown > 0) eventState.crashCooldown--;
 
-  // HYPE: 1.5% chance per tick, only if not on cooldown
   if (eventState.hypeCooldown === 0 && Math.random() < 0.015) {
     let coin = Math.random() < 0.5 ? 'BTC' : 'LTC';
-    let percent = 0.10 + Math.random()*0.15; // 10–25%
+    let percent = 0.10 + Math.random()*0.15;
     state.coins[coin].price *= (1 + percent);
     if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
     log(`Hype event! ${coin} is trending 🚀 (+${(percent*100).toFixed(1)}%)`);
-    eventState.hypeCooldown = 15 + Math.floor(Math.random()*10); // ~50sec cooldown
+    eventState.hypeCooldown = 15 + Math.floor(Math.random()*10);
   }
 
-  // CRASH: 1.5% chance per tick, only if not on cooldown
   if (eventState.crashCooldown === 0 && Math.random() < 0.015) {
-    let targets = Math.random() < 0.5 ? ['BTC'] : ['LTC','BTC']; // sometimes both, sometimes one
-    let percent = 0.2 + Math.random()*0.2; // 20–40%
+    let targets = Math.random() < 0.5 ? ['BTC'] : ['LTC','BTC'];
+    let percent = 0.2 + Math.random()*0.2;
     targets.forEach(coin => {
       state.coins[coin].price *= (1 - percent);
       if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
       log(`Market crash! ${coin} price plummets by ${(percent*100).toFixed(1)}%! 💥`);
     });
-    eventState.crashCooldown = 17 + Math.floor(Math.random()*10); // ~60sec cooldown
+    eventState.crashCooldown = 17 + Math.floor(Math.random()*10);
   }
 }
 
@@ -222,30 +205,25 @@ function botMarketTick() {
     let price = coin.price;
     let circulation = coin.circulation;
 
-    // bots trade: buy/sell randomly, affecting price and circulation
     for (let i=0; i<BOT_COUNT; ++i) {
-      let direction = Math.random() > 0.47 ? 1 : -1; // buy or sell
+      let direction = Math.random() > 0.47 ? 1 : -1;
       let amount = Math.max(0.1, Math.random() * (c === 'BTC' ? 4 : 80));
-      // If buy and enough coins in circulation
       if (direction === 1 && circulation > amount) {
         circulation -= amount;
         price *= 1 + COINS[c].volatility * Math.random();
       }
-      // If sell and not exceeding max
       else if (direction === -1 && circulation + amount <= COINS[c].max) {
         circulation += amount;
         price *= 1 - COINS[c].volatility * Math.random();
       }
     }
 
-    // Clamp
     if (price < COINS[c].minPrice) price = COINS[c].minPrice;
     if (price > COINS[c].maxPrice) price = COINS[c].maxPrice;
 
     coin.price = price;
     coin.circulation = circulation;
 
-    // Record price history for chart
     if (state.history[c].length > 100) state.history[c].shift();
     state.history[c].push({time: new Date().toLocaleTimeString(), price: price});
   }
@@ -269,12 +247,10 @@ window.resetGame = function() {
     },
     log: [],
   };
-  // Reset event state as well
-  eventState = {
-    hypeCooldown: 0,
-    crashCooldown: 0,
-    pumpPending: { BTC: false, LTC: false }
-  };
+  // Reset eventState contents (do not redeclare the variable!)
+  eventState.hypeCooldown = 0;
+  eventState.crashCooldown = 0;
+  eventState.pumpPending = { BTC: false, LTC: false };
   saveState();
   updateUI();
 }
@@ -376,10 +352,6 @@ window.giveMoney = function() {
   state.usd += amt;
   log(`Admin gave the player $${format(amt,2)}.`);
   document.getElementById('admin-status').textContent = `Gave $${format(amt,2)} to player.`;
-  document.getElementById('admin-money').value = '';
-  updateUI();
-  saveState();
-};
   document.getElementById('admin-money').value = '';
   updateUI();
   saveState();
