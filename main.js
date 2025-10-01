@@ -3,7 +3,7 @@ const START_BALANCE = 100000;
 const COINS = {
   BTC: {
     price: 27000,
-    circulation: 1800,
+    circulation: 1700,
     max: 2100,
     volatility: 0.019, // bot effect per tick %
     minPrice: 5000,
