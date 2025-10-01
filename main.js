@@ -3,11 +3,11 @@ const START_BALANCE = 100000;
 const COINS = {
   BTC: {
     price: 27000,
-    circulation: 1700,
+    circulation: 1800,
     max: 2100,
-    volatility: 0.019, // bot effect per tick %
+    volatility: 0.018, // bot effect per tick %
     minPrice: 5000,
-    maxPrice: 72000,
+    maxPrice: 75000,
   },
   LTC: {
     price: 70,
@@ -15,7 +15,7 @@ const COINS = {
     max: 8400,
     volatility: 0.025,
     minPrice: 20,
-    maxPrice: 350,
+    maxPrice: 400,
   }
 };
 const TICK_INTERVAL = 3500; // ms - market tick
@@ -25,8 +25,7 @@ const BOT_COUNT = 6; // bots trading per tick
 let eventState = {
   hypeCooldown: 0,
   crashCooldown: 0,
-  pumpFlag: { BTC: false, LTC: false },
-  dumpCooldown: { BTC: 0, LTC: 0 }
+  pumpPending: { BTC: false, LTC: false }
 };
 
 // --- Game State ---
@@ -101,6 +100,7 @@ function updateCharts() {
 }
 
 // --- Buy/Sell ---
+// Handles partial buy if requested more than available
 window.buyCoin = function(coin) {
   const amtInput = document.getElementById(coin.toLowerCase() + '-amount');
   let amt = parseFloat(amtInput.value);
@@ -146,32 +146,42 @@ window.sellCoin = function(coin) {
   updateUI();
 }
 
-// --- Circulation Event with Pump & Dump ---
+// --- Circulation Event with Pump & Dump (V1.5 Logic) ---
 function checkCirculation(coin) {
   if (state.coins[coin].circulation <= 0) {
     state.coins[coin].circulation = 0;
-    log(`!! All ${coin} have been bought out! Bots will drive prices up sharply until new coins are mined.`);
-    // Pump: price spike
-    state.coins[coin].price *= 1.05 + Math.random()*0.08;
-    if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
-    eventState.pumpFlag[coin] = true; // Set pump flag for possible dump
-    // "Mint" some new coins randomly after a few ticks
-    setTimeout(() => {
-      let mint = Math.floor(COINS[coin].max * 0.01 * Math.random());
-      state.coins[coin].circulation += mint;
-      log(`Miners released ${mint} new ${coin} into circulation.`);
-      // DUMP: Only if pump just happened
-      if (eventState.pumpFlag[coin]) {
-        let dumpPercent = 0.3 + Math.random() * 0.2; // 30–50% drop
-        let oldPrice = state.coins[coin].price;
-        state.coins[coin].price *= (1 - dumpPercent);
-        if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
-        log(`Pump & Dump! ${coin} price crashes by ${(dumpPercent*100).toFixed(1)}% after new coins hit the market!`);
-        eventState.pumpFlag[coin] = false;
-      }
-      saveState();
-      updateUI();
-    }, 4000 + Math.random()*5000);
+    if (!eventState.pumpPending[coin]) {
+      // First sellout: pump and set pumpPending
+      log(`!! All ${coin} have been bought out! Bots will drive prices up sharply until new coins are mined.`);
+      state.coins[coin].price *= 1.05 + Math.random()*0.08;
+      if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
+      eventState.pumpPending[coin] = true;
+      setTimeout(() => {
+        let mint = Math.floor(COINS[coin].max * 0.01 * Math.random());
+        state.coins[coin].circulation += mint;
+        log(`Miners released ${mint} new ${coin} into circulation.`);
+        saveState();
+        updateUI();
+      }, 4000 + Math.random()*5000);
+    } else {
+      // Second sellout: dump!
+      let dumpPercent = 0.3 + Math.random() * 0.2; // 30–50% drop
+      let oldPrice = state.coins[coin].price;
+      state.coins[coin].price *= (1 - dumpPercent);
+      if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
+      log(`Pump & Dump! ${coin} price crashes by ${(dumpPercent*100).toFixed(1)}% after a second buyout!`);
+      eventState.pumpPending[coin] = false;
+      // Optionally mine again (remove this block if you want only one dump per cycle)
+      setTimeout(() => {
+        let mint = Math.floor(COINS[coin].max * 0.01 * Math.random());
+        state.coins[coin].circulation += mint;
+        log(`Miners released ${mint} new ${coin} into circulation.`);
+        saveState();
+        updateUI();
+      }, 4000 + Math.random()*5000);
+    }
+    saveState();
+    updateUI();
   }
 }
 
@@ -180,14 +190,11 @@ function maybeTriggerEvents() {
   // Reduce cooldowns
   if (eventState.hypeCooldown > 0) eventState.hypeCooldown--;
   if (eventState.crashCooldown > 0) eventState.crashCooldown--;
-  eventState.dumpCooldown.BTC = Math.max(0, eventState.dumpCooldown.BTC-1);
-  eventState.dumpCooldown.LTC = Math.max(0, eventState.dumpCooldown.LTC-1);
 
   // HYPE: 1.5% chance per tick, only if not on cooldown
   if (eventState.hypeCooldown === 0 && Math.random() < 0.015) {
     let coin = Math.random() < 0.5 ? 'BTC' : 'LTC';
     let percent = 0.10 + Math.random()*0.15; // 10–25%
-    let oldPrice = state.coins[coin].price;
     state.coins[coin].price *= (1 + percent);
     if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
     log(`Hype event! ${coin} is trending 🚀 (+${(percent*100).toFixed(1)}%)`);
@@ -199,7 +206,6 @@ function maybeTriggerEvents() {
     let targets = Math.random() < 0.5 ? ['BTC'] : ['LTC','BTC']; // sometimes both, sometimes one
     let percent = 0.2 + Math.random()*0.2; // 20–40%
     targets.forEach(coin => {
-      let oldPrice = state.coins[coin].price;
       state.coins[coin].price *= (1 - percent);
       if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
       log(`Market crash! ${coin} price plummets by ${(percent*100).toFixed(1)}%! 💥`);
@@ -267,8 +273,7 @@ window.resetGame = function() {
   eventState = {
     hypeCooldown: 0,
     crashCooldown: 0,
-    pumpFlag: { BTC: false, LTC: false },
-    dumpCooldown: { BTC: 0, LTC: 0 }
+    pumpPending: { BTC: false, LTC: false }
   };
   saveState();
   updateUI();
@@ -371,6 +376,10 @@ window.giveMoney = function() {
   state.usd += amt;
   log(`Admin gave the player $${format(amt,2)}.`);
   document.getElementById('admin-status').textContent = `Gave $${format(amt,2)} to player.`;
+  document.getElementById('admin-money').value = '';
+  updateUI();
+  saveState();
+};
   document.getElementById('admin-money').value = '';
   updateUI();
   saveState();
