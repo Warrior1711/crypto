@@ -5,21 +5,29 @@ const COINS = {
     price: 27000,
     circulation: 1800,
     max: 2100,
-    volatility: 0.018, // bot effect per tick %
+    volatility: 0.019, // bot effect per tick %
     minPrice: 5000,
-    maxPrice: 60000,
+    maxPrice: 72000,
   },
   LTC: {
     price: 70,
     circulation: 6600,
-    max: 9500,
+    max: 8400,
     volatility: 0.025,
     minPrice: 20,
-    maxPrice: 250,
+    maxPrice: 350,
   }
 };
 const TICK_INTERVAL = 3500; // ms - market tick
 const BOT_COUNT = 6; // bots trading per tick
+
+// --- Event State ---
+let eventState = {
+  hypeCooldown: 0,
+  crashCooldown: 0,
+  pumpFlag: { BTC: false, LTC: false },
+  dumpCooldown: { BTC: 0, LTC: 0 }
+};
 
 // --- Game State ---
 let state = {
@@ -93,7 +101,6 @@ function updateCharts() {
 }
 
 // --- Buy/Sell ---
-// FIXED: Now buying all circulation in one go triggers buyout event.
 window.buyCoin = function(coin) {
   const amtInput = document.getElementById(coin.toLowerCase() + '-amount');
   let amt = parseFloat(amtInput.value);
@@ -139,27 +146,71 @@ window.sellCoin = function(coin) {
   updateUI();
 }
 
-// --- Circulation Event ---
+// --- Circulation Event with Pump & Dump ---
 function checkCirculation(coin) {
   if (state.coins[coin].circulation <= 0) {
     state.coins[coin].circulation = 0;
     log(`!! All ${coin} have been bought out! Bots will drive prices up sharply until new coins are mined.`);
-    // Simulate price spike
+    // Pump: price spike
     state.coins[coin].price *= 1.05 + Math.random()*0.08;
     if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
+    eventState.pumpFlag[coin] = true; // Set pump flag for possible dump
     // "Mint" some new coins randomly after a few ticks
     setTimeout(() => {
       let mint = Math.floor(COINS[coin].max * 0.01 * Math.random());
       state.coins[coin].circulation += mint;
       log(`Miners released ${mint} new ${coin} into circulation.`);
+      // DUMP: Only if pump just happened
+      if (eventState.pumpFlag[coin]) {
+        let dumpPercent = 0.3 + Math.random() * 0.2; // 30–50% drop
+        let oldPrice = state.coins[coin].price;
+        state.coins[coin].price *= (1 - dumpPercent);
+        if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
+        log(`Pump & Dump! ${coin} price crashes by ${(dumpPercent*100).toFixed(1)}% after new coins hit the market!`);
+        eventState.pumpFlag[coin] = false;
+      }
       saveState();
       updateUI();
     }, 4000 + Math.random()*5000);
   }
 }
 
+// --- Random Events: Hype & Market Crash ---
+function maybeTriggerEvents() {
+  // Reduce cooldowns
+  if (eventState.hypeCooldown > 0) eventState.hypeCooldown--;
+  if (eventState.crashCooldown > 0) eventState.crashCooldown--;
+  eventState.dumpCooldown.BTC = Math.max(0, eventState.dumpCooldown.BTC-1);
+  eventState.dumpCooldown.LTC = Math.max(0, eventState.dumpCooldown.LTC-1);
+
+  // HYPE: 1.5% chance per tick, only if not on cooldown
+  if (eventState.hypeCooldown === 0 && Math.random() < 0.015) {
+    let coin = Math.random() < 0.5 ? 'BTC' : 'LTC';
+    let percent = 0.10 + Math.random()*0.15; // 10–25%
+    let oldPrice = state.coins[coin].price;
+    state.coins[coin].price *= (1 + percent);
+    if (state.coins[coin].price > COINS[coin].maxPrice*2) state.coins[coin].price = COINS[coin].maxPrice*2;
+    log(`Hype event! ${coin} is trending 🚀 (+${(percent*100).toFixed(1)}%)`);
+    eventState.hypeCooldown = 15 + Math.floor(Math.random()*10); // ~50sec cooldown
+  }
+
+  // CRASH: 1.5% chance per tick, only if not on cooldown
+  if (eventState.crashCooldown === 0 && Math.random() < 0.015) {
+    let targets = Math.random() < 0.5 ? ['BTC'] : ['LTC','BTC']; // sometimes both, sometimes one
+    let percent = 0.2 + Math.random()*0.2; // 20–40%
+    targets.forEach(coin => {
+      let oldPrice = state.coins[coin].price;
+      state.coins[coin].price *= (1 - percent);
+      if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
+      log(`Market crash! ${coin} price plummets by ${(percent*100).toFixed(1)}%! 💥`);
+    });
+    eventState.crashCooldown = 17 + Math.floor(Math.random()*10); // ~60sec cooldown
+  }
+}
+
 // --- Bot Market Simulation ---
 function botMarketTick() {
+  maybeTriggerEvents();
   for (let c of ['BTC','LTC']) {
     let coin = state.coins[c];
     let price = coin.price;
@@ -211,6 +262,13 @@ window.resetGame = function() {
       LTC: [ {time: new Date().toLocaleTimeString(), price: COINS.LTC.price} ],
     },
     log: [],
+  };
+  // Reset event state as well
+  eventState = {
+    hypeCooldown: 0,
+    crashCooldown: 0,
+    pumpFlag: { BTC: false, LTC: false },
+    dumpCooldown: { BTC: 0, LTC: 0 }
   };
   saveState();
   updateUI();
