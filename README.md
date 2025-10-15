@@ -1,7 +1,7 @@
 # crypto
 
 # Version 1.5 BETA
-# DONT PLAY CURRENTLY BUGGED
+# hmm
 
 to fix current game version not loading use the script below and paste it into browser console!
 
