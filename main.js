@@ -174,7 +174,6 @@ function checkCirculation(coin) {
 // --- Random Events: Hype & Market Crash ---
 function maybeTriggerEvents() {
   if (eventState.hypeCooldown > 0) eventState.hypeCooldown--;
-  if (eventState.crashCooldown > 0) eventState.crashCooldown--;
 
   if (eventState.hypeCooldown === 0 && Math.random() < 0.015) {
     let coin = Math.random() < 0.5 ? 'BTC' : 'LTC';
@@ -184,17 +183,16 @@ function maybeTriggerEvents() {
     log(`Hype event! ${coin} is trending 🚀 (+${(percent*100).toFixed(1)}%)`);
     eventState.hypeCooldown = 15 + Math.floor(Math.random()*10);
   }
+}
 
-  if (eventState.crashCooldown === 0 && Math.random() < 0.015) {
-    let targets = Math.random() < 0.5 ? ['BTC'] : ['LTC','BTC'];
-    let percent = 0.2 + Math.random()*0.2;
-    targets.forEach(coin => {
-      state.coins[coin].price *= (1 - percent);
-      if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
-      log(`Market crash! ${coin} price plummets by ${(percent*100).toFixed(1)}%! 💥`);
-    });
-    eventState.crashCooldown = 17 + Math.floor(Math.random()*10);
-  }
+// Market crash is now triggered by large sells, should be better now
+function triggerMarketCrash(coin) {
+  let percent = 0.2 + Math.random()*0.2;
+  state.coins[coin].price *= (1 - percent);
+  if (state.coins[coin].price < COINS[coin].minPrice) state.coins[coin].price = COINS[coin].minPrice;
+  log(`Market crash! ${coin} price plummets by ${(percent*100).toFixed(1)}%! 💥`);
+  saveState();
+  updateUI();
 }
 
 // --- Bot Market Simulation ---
