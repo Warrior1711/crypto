@@ -1,4 +1,5 @@
 # update log
 
-# V1.5
-added random events and made some tweaks!
+# V1.5.1 BETA
+working on changing pump and dump event logic
+also tweaking some other things
